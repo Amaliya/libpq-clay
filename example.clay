@@ -1,0 +1,27 @@
+import postgres.*;
+import generated.libpq.*;
+
+main(){
+  var conn = connect("dbname = postgres");
+
+  execute(conn, "BEGIN");
+  execute(conn, "DECLARE myportal CURSOR FOR select * from pg_database");
+  
+  var res = select(conn, "FETCH ALL in myportal");
+
+  var nFields = fieldCount(res);
+
+  for(i in range( nFields))
+    print(fieldName(res, i), " ");
+  
+  print("\n\n");
+
+  for(i in range(tupleCount(res))) {
+    for(j in range(nFields))
+      print(getValue(res, i, j), " ");
+    println();
+  }
+
+  execute(conn, "CLOSE myportal");
+  execute(conn, "END");
+}

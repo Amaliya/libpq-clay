@@ -1,0 +1,81 @@
+import generated.libpq.*;
+
+record Connection(
+  connection : Pointer[PGconn]
+);
+
+overload RegularRecord?(static Connection) = false;
+
+overload destroy(x : Connection){
+  if(x.connection != null(PGconn)) PQfinish(x.connection);
+}
+
+overload moveUnsafe(src : Connection) target:Connection {
+  target.connection = src.connection;
+}
+
+overload resetUnsafe(src : Connection){
+  src.connection = null(PGconn);
+}
+
+record Result(
+  result : Pointer[PGresult]
+);
+
+overload RegularRecord?(static Result) = false;
+
+overload destroy(x : Result){
+  if(x.result != null(PGresult)) PQclear(x.result);
+}
+
+overload moveUnsafe(src : Result) target:Result {
+  target.result = src.result;
+}
+
+overload resetUnsafe(src : Result){
+  src.result = null(PGconn);
+}
+
+record ConnectionFailed(
+  message : String 
+);
+instance Exception = ConnectionFailed;
+
+record CommandFailed(
+  message : String 
+);
+instance Exception = CommandFailed;
+
+connect(connectionInfo) Connection{
+  var result = Connection(PQconnectdb(cstring(connectionInfo)));
+
+  if (PQstatus(result.connection) != CONNECTION_OK) {
+    throw ConnectionFailed(String(PQerrorMessage(&result.connection^)));
+  }
+  return(move(result));
+}
+
+procedure execute;
+
+overload execute(connection, command){
+  return move(execute(connection, command, PGRES_COMMAND_OK));
+}
+
+select(connection, command){
+  return move(execute(connection, command, PGRES_TUPLES_OK));
+}
+
+overload execute(connection, command, expected){
+  var result = Result(PQexec(connection.connection, cstring(command)));
+
+  if(PQresultStatus(result.result) != expected){
+    throw CommandFailed(String(PQerrorMessage(connection.connection)));
+  }
+
+  return move(result);
+}
+
+tupleCount(result : Result) = PQntuples(result.result);
+fieldCount(result : Result) = PQnfields(result.result);
+fieldName(result : Result, i) = String(PQfname(result.result,i));
+getValue(result : Result, i, j) = String(PQgetvalue(result.result,i, j));
