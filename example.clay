@@ -1,5 +1,4 @@
 import postgres.*;
-import generated.libpq.*;
 
 main(){
   var conn = connect("dbname = postgres");
